@@ -1,7 +1,8 @@
 /*
  * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License;
- * you may not use this file except in compliance with the Elastic License.
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
  */
 package org.elasticsearch.xpack.core.ilm;
 
@@ -11,7 +12,7 @@ import org.elasticsearch.Version;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.admin.indices.forcemerge.ForceMergeRequest;
 import org.elasticsearch.action.admin.indices.forcemerge.ForceMergeResponse;
-import org.elasticsearch.cluster.metadata.IndexMetaData;
+import org.elasticsearch.cluster.metadata.IndexMetadata;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.xpack.core.ilm.Step.StepKey;
 import org.mockito.Mockito;
@@ -60,7 +61,7 @@ public class ForceMergeStepTests extends AbstractStepTestCase<ForceMergeStep> {
     }
 
     public void testPerformActionComplete() {
-        IndexMetaData indexMetaData = IndexMetaData.builder(randomAlphaOfLength(10)).settings(settings(Version.CURRENT))
+        IndexMetadata indexMetadata = IndexMetadata.builder(randomAlphaOfLength(10)).settings(settings(Version.CURRENT))
             .numberOfShards(randomIntBetween(1, 5)).numberOfReplicas(randomIntBetween(0, 5)).build();
         Step.StepKey stepKey = randomStepKey();
         StepKey nextStepKey = randomStepKey();
@@ -78,7 +79,7 @@ public class ForceMergeStepTests extends AbstractStepTestCase<ForceMergeStep> {
 
         ForceMergeStep step = new ForceMergeStep(stepKey, nextStepKey, client, maxNumSegments);
         SetOnce<Boolean> completed = new SetOnce<>();
-        step.performAction(indexMetaData, null, null, new AsyncActionStep.Listener() {
+        step.performAction(indexMetadata, null, null, new AsyncActionStep.Listener() {
             @Override
             public void onResponse(boolean complete) {
                 completed.set(complete);
@@ -93,7 +94,7 @@ public class ForceMergeStepTests extends AbstractStepTestCase<ForceMergeStep> {
     }
 
     public void testPerformActionThrowsException() {
-        IndexMetaData indexMetaData = IndexMetaData.builder(randomAlphaOfLength(10)).settings(settings(Version.CURRENT))
+        IndexMetadata indexMetadata = IndexMetadata.builder(randomAlphaOfLength(10)).settings(settings(Version.CURRENT))
             .numberOfShards(randomIntBetween(1, 5)).numberOfReplicas(randomIntBetween(0, 5)).build();
         Exception exception = new RuntimeException("error");
         Step.StepKey stepKey = randomStepKey();
@@ -104,7 +105,7 @@ public class ForceMergeStepTests extends AbstractStepTestCase<ForceMergeStep> {
         Mockito.doAnswer(invocationOnMock -> {
             ForceMergeRequest request = (ForceMergeRequest) invocationOnMock.getArguments()[0];
             assertThat(request.indices().length, equalTo(1));
-            assertThat(request.indices()[0], equalTo(indexMetaData.getIndex().getName()));
+            assertThat(request.indices()[0], equalTo(indexMetadata.getIndex().getName()));
             assertThat(request.maxNumSegments(), equalTo(maxNumSegments));
             @SuppressWarnings("unchecked")
             ActionListener<ForceMergeResponse> listener = (ActionListener<ForceMergeResponse>) invocationOnMock.getArguments()[1];
@@ -114,7 +115,7 @@ public class ForceMergeStepTests extends AbstractStepTestCase<ForceMergeStep> {
 
         ForceMergeStep step = new ForceMergeStep(stepKey, nextStepKey, client, maxNumSegments);
         SetOnce<Boolean> exceptionThrown = new SetOnce<>();
-        step.performAction(indexMetaData, null, null, new AsyncActionStep.Listener() {
+        step.performAction(indexMetadata, null, null, new AsyncActionStep.Listener() {
             @Override
             public void onResponse(boolean complete) {
                 throw new AssertionError("unexpected method call");

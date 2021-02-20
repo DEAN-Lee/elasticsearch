@@ -1,7 +1,8 @@
 /*
  * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License;
- * you may not use this file except in compliance with the Elastic License.
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
  */
 package org.elasticsearch.xpack.idp.saml.rest.action;
 
@@ -42,7 +43,8 @@ public class RestSamlMetadataAction extends IdpBaseRestHandler {
     @Override
     protected RestChannelConsumer innerPrepareRequest(RestRequest request, NodeClient client) throws IOException {
         final String spEntityId = request.param("sp_entity_id");
-        final SamlMetadataRequest metadataRequest = new SamlMetadataRequest(spEntityId);
+        final String acs = request.param("acs");
+        final SamlMetadataRequest metadataRequest = new SamlMetadataRequest(spEntityId, acs);
         return channel -> client.execute(SamlMetadataAction.INSTANCE, metadataRequest,
             new RestBuilderListener<SamlMetadataResponse>(channel) {
                 @Override

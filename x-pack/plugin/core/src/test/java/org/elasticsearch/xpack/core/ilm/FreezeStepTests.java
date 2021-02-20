@@ -1,7 +1,8 @@
 /*
  * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License;
- * you may not use this file except in compliance with the Elastic License.
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
  */
 package org.elasticsearch.xpack.core.ilm;
 
@@ -10,7 +11,7 @@ import org.apache.lucene.util.SetOnce;
 import org.elasticsearch.Version;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
-import org.elasticsearch.cluster.metadata.IndexMetaData;
+import org.elasticsearch.cluster.metadata.IndexMetadata;
 import org.elasticsearch.protocol.xpack.frozen.FreezeRequest;
 import org.elasticsearch.protocol.xpack.frozen.FreezeResponse;
 import org.elasticsearch.xpack.core.frozen.action.FreezeIndexAction;
@@ -54,8 +55,8 @@ public class FreezeStepTests extends AbstractStepMasterTimeoutTestCase<FreezeSte
     }
 
     @Override
-    protected IndexMetaData getIndexMetaData() {
-        return IndexMetaData.builder(randomAlphaOfLength(10)).settings(settings(Version.CURRENT))
+    protected IndexMetadata getIndexMetadata() {
+        return IndexMetadata.builder(randomAlphaOfLength(10)).settings(settings(Version.CURRENT))
             .numberOfShards(randomIntBetween(1, 5)).numberOfReplicas(randomIntBetween(0, 5)).build();
     }
 
@@ -64,7 +65,7 @@ public class FreezeStepTests extends AbstractStepMasterTimeoutTestCase<FreezeSte
     }
 
     public void testFreeze() {
-        IndexMetaData indexMetaData = getIndexMetaData();
+        IndexMetadata indexMetadata = getIndexMetadata();
 
         Mockito.doAnswer(invocation -> {
             assertSame(invocation.getArguments()[0], FreezeIndexAction.INSTANCE);
@@ -73,7 +74,7 @@ public class FreezeStepTests extends AbstractStepMasterTimeoutTestCase<FreezeSte
             ActionListener<AcknowledgedResponse> listener = (ActionListener<AcknowledgedResponse>) invocation.getArguments()[2];
             assertNotNull(request);
             assertEquals(1, request.indices().length);
-            assertEquals(indexMetaData.getIndex().getName(), request.indices()[0]);
+            assertEquals(indexMetadata.getIndex().getName(), request.indices()[0]);
             listener.onResponse(new FreezeResponse(true, true));
             return null;
         }).when(indicesClient).execute(Mockito.any(), Mockito.any(), Mockito.any());
@@ -81,7 +82,7 @@ public class FreezeStepTests extends AbstractStepMasterTimeoutTestCase<FreezeSte
         SetOnce<Boolean> actionCompleted = new SetOnce<>();
 
         FreezeStep step = createRandomInstance();
-        step.performAction(indexMetaData, emptyClusterState(), null, new AsyncActionStep.Listener() {
+        step.performAction(indexMetadata, emptyClusterState(), null, new AsyncActionStep.Listener() {
             @Override
             public void onResponse(boolean complete) {
                 actionCompleted.set(complete);
@@ -101,7 +102,7 @@ public class FreezeStepTests extends AbstractStepMasterTimeoutTestCase<FreezeSte
     }
 
     public void testExceptionThrown() {
-        IndexMetaData indexMetaData = getIndexMetaData();
+        IndexMetadata indexMetadata = getIndexMetadata();
         Exception exception = new RuntimeException();
 
         Mockito.doAnswer(invocation -> {
@@ -113,7 +114,7 @@ public class FreezeStepTests extends AbstractStepMasterTimeoutTestCase<FreezeSte
 
         SetOnce<Boolean> exceptionThrown = new SetOnce<>();
         FreezeStep step = createRandomInstance();
-        step.performAction(indexMetaData, emptyClusterState(), null, new AsyncActionStep.Listener() {
+        step.performAction(indexMetadata, emptyClusterState(), null, new AsyncActionStep.Listener() {
             @Override
             public void onResponse(boolean complete) {
                 throw new AssertionError("Unexpected method call");
@@ -130,7 +131,7 @@ public class FreezeStepTests extends AbstractStepMasterTimeoutTestCase<FreezeSte
     }
 
     public void testNotAcknowledged() {
-        IndexMetaData indexMetaData = getIndexMetaData();
+        IndexMetadata indexMetadata = getIndexMetadata();
 
         Mockito.doAnswer(invocation -> {
             @SuppressWarnings("unchecked")
@@ -141,7 +142,7 @@ public class FreezeStepTests extends AbstractStepMasterTimeoutTestCase<FreezeSte
 
         SetOnce<Boolean> exceptionThrown = new SetOnce<>();
         FreezeStep step = createRandomInstance();
-        step.performAction(indexMetaData, emptyClusterState(), null, new AsyncActionStep.Listener() {
+        step.performAction(indexMetadata, emptyClusterState(), null, new AsyncActionStep.Listener() {
             @Override
             public void onResponse(boolean complete) {
                 throw new AssertionError("Unexpected method call");

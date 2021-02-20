@@ -1,7 +1,8 @@
 /*
  * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License;
- * you may not use this file except in compliance with the Elastic License.
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
  */
 
 package org.elasticsearch.xpack.core.ilm;
@@ -14,7 +15,7 @@ import org.elasticsearch.action.admin.indices.close.CloseIndexResponse;
 import org.elasticsearch.client.AdminClient;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.IndicesAdminClient;
-import org.elasticsearch.cluster.metadata.IndexMetaData;
+import org.elasticsearch.cluster.metadata.IndexMetadata;
 import org.junit.Before;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
@@ -62,7 +63,7 @@ public class CloseIndexStepTests extends AbstractStepTestCase<CloseIndexStep> {
     }
 
     public void testPerformAction() {
-        IndexMetaData indexMetaData = IndexMetaData.builder(randomAlphaOfLength(10)).settings(settings(Version.CURRENT))
+        IndexMetadata indexMetadata = IndexMetadata.builder(randomAlphaOfLength(10)).settings(settings(Version.CURRENT))
             .numberOfShards(randomIntBetween(1, 5)).numberOfReplicas(randomIntBetween(0, 5)).build();
 
         CloseIndexStep step = createRandomInstance();
@@ -77,15 +78,15 @@ public class CloseIndexStepTests extends AbstractStepTestCase<CloseIndexStep> {
             CloseIndexRequest request = (CloseIndexRequest) invocation.getArguments()[0];
             @SuppressWarnings("unchecked")
             ActionListener<CloseIndexResponse> listener = (ActionListener<CloseIndexResponse>) invocation.getArguments()[1];
-            assertThat(request.indices(), equalTo(new String[]{indexMetaData.getIndex().getName()}));
+            assertThat(request.indices(), equalTo(new String[]{indexMetadata.getIndex().getName()}));
             listener.onResponse(new CloseIndexResponse(true, true,
-                Collections.singletonList(new CloseIndexResponse.IndexResult(indexMetaData.getIndex()))));
+                Collections.singletonList(new CloseIndexResponse.IndexResult(indexMetadata.getIndex()))));
             return null;
         }).when(indicesClient).close(Mockito.any(), Mockito.any());
 
         SetOnce<Boolean> actionCompleted = new SetOnce<>();
 
-        step.performAction(indexMetaData, null, null, new AsyncActionStep.Listener() {
+        step.performAction(indexMetadata, null, null, new AsyncActionStep.Listener() {
 
             @Override
             public void onResponse(boolean complete) {
@@ -106,7 +107,7 @@ public class CloseIndexStepTests extends AbstractStepTestCase<CloseIndexStep> {
 
 
     public void testPerformActionFailure() {
-        IndexMetaData indexMetaData = IndexMetaData.builder(randomAlphaOfLength(10)).settings(settings(Version.CURRENT))
+        IndexMetadata indexMetadata = IndexMetadata.builder(randomAlphaOfLength(10)).settings(settings(Version.CURRENT))
             .numberOfShards(randomIntBetween(1, 5)).numberOfReplicas(randomIntBetween(0, 5)).build();
 
         CloseIndexStep step = createRandomInstance();
@@ -121,14 +122,14 @@ public class CloseIndexStepTests extends AbstractStepTestCase<CloseIndexStep> {
             CloseIndexRequest request = (CloseIndexRequest) invocation.getArguments()[0];
             @SuppressWarnings("unchecked")
             ActionListener<CloseIndexResponse> listener = (ActionListener<CloseIndexResponse>) invocation.getArguments()[1];
-            assertThat(request.indices(), equalTo(new String[]{indexMetaData.getIndex().getName()}));
+            assertThat(request.indices(), equalTo(new String[]{indexMetadata.getIndex().getName()}));
             listener.onFailure(exception);
             return null;
         }).when(indicesClient).close(Mockito.any(), Mockito.any());
 
         SetOnce<Boolean> exceptionThrown = new SetOnce<>();
 
-        step.performAction(indexMetaData, null, null, new AsyncActionStep.Listener() {
+        step.performAction(indexMetadata, null, null, new AsyncActionStep.Listener() {
 
             @Override
             public void onResponse(boolean complete) {

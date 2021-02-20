@@ -1,12 +1,13 @@
 /*
  * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License;
- * you may not use this file except in compliance with the Elastic License.
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
  */
 package org.elasticsearch.xpack.core.ilm;
 
 import org.elasticsearch.Version;
-import org.elasticsearch.cluster.metadata.IndexMetaData;
+import org.elasticsearch.cluster.metadata.IndexMetadata;
 import org.mockito.Mockito;
 
 import static org.hamcrest.Matchers.is;
@@ -41,7 +42,7 @@ public abstract class AbstractUnfollowIndexStepTestCase<T extends AbstractUnfoll
     }
 
     public final void testNotAFollowerIndex() {
-        IndexMetaData indexMetadata = IndexMetaData.builder("follower-index")
+        IndexMetadata indexMetadata = IndexMetadata.builder("follower-index")
             .settings(settings(Version.CURRENT).put(LifecycleSettings.LIFECYCLE_INDEXING_COMPLETE, "true"))
             .numberOfShards(1)
             .numberOfReplicas(0)

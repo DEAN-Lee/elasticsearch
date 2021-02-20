@@ -1,7 +1,8 @@
 /*
  * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License;
- * you may not use this file except in compliance with the Elastic License.
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
  */
 package org.elasticsearch.xpack.transform.action;
 
@@ -27,8 +28,8 @@ import org.elasticsearch.common.logging.LoggerMessageFormat;
 import org.elasticsearch.common.regex.Regex;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.discovery.MasterNotDiscoveredException;
-import org.elasticsearch.persistent.PersistentTasksCustomMetaData;
-import org.elasticsearch.persistent.PersistentTasksCustomMetaData.PersistentTask;
+import org.elasticsearch.persistent.PersistentTasksCustomMetadata;
+import org.elasticsearch.persistent.PersistentTasksCustomMetadata.PersistentTask;
 import org.elasticsearch.persistent.PersistentTasksService;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
@@ -106,12 +107,12 @@ public class TransportStopTransformAction extends TransportTasksAction<Transform
     }
 
     static void validateTaskState(ClusterState state, List<String> transformIds, boolean isForce) {
-        PersistentTasksCustomMetaData tasks = state.metaData().custom(PersistentTasksCustomMetaData.TYPE);
+        PersistentTasksCustomMetadata tasks = state.metadata().custom(PersistentTasksCustomMetadata.TYPE);
         if (isForce == false && tasks != null) {
             List<String> failedTasks = new ArrayList<>();
             List<String> failedReasons = new ArrayList<>();
             for (String transformId : transformIds) {
-                PersistentTasksCustomMetaData.PersistentTask<?> dfTask = tasks.getTask(transformId);
+                PersistentTasksCustomMetadata.PersistentTask<?> dfTask = tasks.getTask(transformId);
                 if (dfTask != null
                     && dfTask.getState() instanceof TransformState
                     && ((TransformState) dfTask.getState()).getTaskState() == TransformTaskState.FAILED) {
@@ -133,7 +134,7 @@ public class TransportStopTransformAction extends TransportTasksAction<Transform
     }
 
     static Tuple<Set<String>, Set<String>> findTasksWithoutConfig(ClusterState state, String transformId) {
-        PersistentTasksCustomMetaData tasks = state.metaData().custom(PersistentTasksCustomMetaData.TYPE);
+        PersistentTasksCustomMetadata tasks = state.metadata().custom(PersistentTasksCustomMetadata.TYPE);
 
         Set<String> taskIds = new HashSet<>();
         Set<String> executorNodes = new HashSet<>();
@@ -144,7 +145,7 @@ public class TransportStopTransformAction extends TransportTasksAction<Transform
                 return Regex.simpleMatch(transformId, transformParams.getId());
             };
 
-            for (PersistentTasksCustomMetaData.PersistentTask<?> pTask : tasks.findTasks(TransformField.TASK_NAME, taskMatcher)) {
+            for (PersistentTasksCustomMetadata.PersistentTask<?> pTask : tasks.findTasks(TransformField.TASK_NAME, taskMatcher)) {
                 executorNodes.add(pTask.getExecutorNode());
                 taskIds.add(pTask.getId());
             }
@@ -350,12 +351,12 @@ public class TransportStopTransformAction extends TransportTasksAction<Transform
     ) {
         // This map is accessed in the predicate and the listener callbacks
         final Map<String, ElasticsearchException> exceptions = new ConcurrentHashMap<>();
-        persistentTasksService.waitForPersistentTasksCondition(persistentTasksCustomMetaData -> {
-            if (persistentTasksCustomMetaData == null) {
+        persistentTasksService.waitForPersistentTasksCondition(persistentTasksCustomMetadata -> {
+            if (persistentTasksCustomMetadata == null) {
                 return true;
             }
             for (String persistentTaskId : persistentTaskIds) {
-                PersistentTasksCustomMetaData.PersistentTask<?> transformsTask = persistentTasksCustomMetaData.getTask(persistentTaskId);
+                PersistentTasksCustomMetadata.PersistentTask<?> transformsTask = persistentTasksCustomMetadata.getTask(persistentTaskId);
                 // Either the task has successfully stopped or we have seen that it has failed
                 if (transformsTask == null || exceptions.containsKey(persistentTaskId)) {
                     continue;
@@ -374,7 +375,7 @@ public class TransportStopTransformAction extends TransportTasksAction<Transform
 
                     // If all the tasks are now flagged as failed, do not wait for another ClusterState update.
                     // Return to the caller as soon as possible
-                    return persistentTasksCustomMetaData.tasks().stream().allMatch(p -> exceptions.containsKey(p.getId()));
+                    return persistentTasksCustomMetadata.tasks().stream().allMatch(p -> exceptions.containsKey(p.getId()));
                 }
                 return false;
             }
@@ -407,11 +408,11 @@ public class TransportStopTransformAction extends TransportTasksAction<Transform
         }, e -> {
             // waitForPersistentTasksCondition throws a IllegalStateException on timeout
             if (e instanceof IllegalStateException && e.getMessage().startsWith("Timed out")) {
-                PersistentTasksCustomMetaData persistentTasksCustomMetaData = clusterService.state()
-                    .metaData()
-                    .custom(PersistentTasksCustomMetaData.TYPE);
+                PersistentTasksCustomMetadata persistentTasksCustomMetadata = clusterService.state()
+                    .metadata()
+                    .custom(PersistentTasksCustomMetadata.TYPE);
 
-                if (persistentTasksCustomMetaData == null) {
+                if (persistentTasksCustomMetadata == null) {
                     listener.onResponse(new Response(Boolean.TRUE));
                     return;
                 }
@@ -419,7 +420,7 @@ public class TransportStopTransformAction extends TransportTasksAction<Transform
                 // collect which tasks are still running
                 Set<String> stillRunningTasks = new HashSet<>();
                 for (String persistentTaskId : persistentTaskIds) {
-                    if (persistentTasksCustomMetaData.getTask(persistentTaskId) != null) {
+                    if (persistentTasksCustomMetadata.getTask(persistentTaskId) != null) {
                         stillRunningTasks.add(persistentTaskId);
                     }
                 }

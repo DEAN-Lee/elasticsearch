@@ -1,7 +1,8 @@
 /*
  * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License;
- * you may not use this file except in compliance with the Elastic License.
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
  */
 
 package org.elasticsearch.xpack.sql.proto;
@@ -16,6 +17,22 @@ import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+
+import static org.elasticsearch.xpack.sql.proto.Protocol.BINARY_FORMAT_NAME;
+import static org.elasticsearch.xpack.sql.proto.Protocol.CLIENT_ID_NAME;
+import static org.elasticsearch.xpack.sql.proto.Protocol.COLUMNAR_NAME;
+import static org.elasticsearch.xpack.sql.proto.Protocol.CURSOR_NAME;
+import static org.elasticsearch.xpack.sql.proto.Protocol.FETCH_SIZE_NAME;
+import static org.elasticsearch.xpack.sql.proto.Protocol.FIELD_MULTI_VALUE_LENIENCY_NAME;
+import static org.elasticsearch.xpack.sql.proto.Protocol.FILTER_NAME;
+import static org.elasticsearch.xpack.sql.proto.Protocol.INDEX_INCLUDE_FROZEN_NAME;
+import static org.elasticsearch.xpack.sql.proto.Protocol.MODE_NAME;
+import static org.elasticsearch.xpack.sql.proto.Protocol.PAGE_TIMEOUT_NAME;
+import static org.elasticsearch.xpack.sql.proto.Protocol.PARAMS_NAME;
+import static org.elasticsearch.xpack.sql.proto.Protocol.QUERY_NAME;
+import static org.elasticsearch.xpack.sql.proto.Protocol.REQUEST_TIMEOUT_NAME;
+import static org.elasticsearch.xpack.sql.proto.Protocol.TIME_ZONE_NAME;
+import static org.elasticsearch.xpack.sql.proto.Protocol.VERSION_NAME;
 
 /**
  * Sql query request for JDBC/CLI client
@@ -118,7 +135,7 @@ public class SqlQueryRequest extends AbstractSqlRequest {
     public ToXContent filter() {
         return filter;
     }
-    
+
     /**
      * Optional setting for returning the result values in a columnar fashion (as opposed to rows of values).
      * Each column will have all its values in a list. Defaults to false.
@@ -130,15 +147,15 @@ public class SqlQueryRequest extends AbstractSqlRequest {
     public boolean fieldMultiValueLeniency() {
         return fieldMultiValueLeniency;
     }
-    
+
     public boolean indexIncludeFrozen() {
         return indexIncludeFrozen;
     }
-    
+
     public Boolean binaryCommunication() {
         return binaryCommunication;
     }
-    
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -147,7 +164,7 @@ public class SqlQueryRequest extends AbstractSqlRequest {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        if (!super.equals(o)) {
+        if (super.equals(o) == false) {
             return false;
         }
         SqlQueryRequest that = (SqlQueryRequest) o;
@@ -174,52 +191,52 @@ public class SqlQueryRequest extends AbstractSqlRequest {
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
         if (query != null) {
-            builder.field("query", query);
+            builder.field(QUERY_NAME, query);
         }
-        builder.field("mode", mode().toString());
+        builder.field(MODE_NAME, mode().toString());
         if (clientId() != null) {
-            builder.field("client_id", clientId());
+            builder.field(CLIENT_ID_NAME, clientId());
         }
         if (version() != null) {
-            builder.field("version", version().toString());
+            builder.field(VERSION_NAME, version().toString());
         }
         if (this.params != null && this.params.isEmpty() == false) {
-            builder.startArray("params");
+            builder.startArray(PARAMS_NAME);
             for (SqlTypedParamValue val : this.params) {
                 val.toXContent(builder, params);
             }
             builder.endArray();
         }
         if (zoneId != null) {
-            builder.field("time_zone", zoneId.getId());
+            builder.field(TIME_ZONE_NAME, zoneId.getId());
         }
         if (fetchSize != Protocol.FETCH_SIZE) {
-            builder.field("fetch_size", fetchSize);
+            builder.field(FETCH_SIZE_NAME, fetchSize);
         }
         if (requestTimeout != Protocol.REQUEST_TIMEOUT) {
-            builder.field("request_timeout", requestTimeout.getStringRep());
+            builder.field(REQUEST_TIMEOUT_NAME, requestTimeout.getStringRep());
         }
         if (pageTimeout != Protocol.PAGE_TIMEOUT) {
-            builder.field("page_timeout", pageTimeout.getStringRep());
+            builder.field(PAGE_TIMEOUT_NAME, pageTimeout.getStringRep());
         }
         if (filter != null) {
-            builder.field("filter");
+            builder.field(FILTER_NAME);
             filter.toXContent(builder, params);
         }
         if (columnar != null) {
-            builder.field("columnar", columnar);
+            builder.field(COLUMNAR_NAME, columnar);
         }
         if (fieldMultiValueLeniency) {
-            builder.field("field_multi_value_leniency", fieldMultiValueLeniency);
+            builder.field(FIELD_MULTI_VALUE_LENIENCY_NAME, fieldMultiValueLeniency);
         }
         if (indexIncludeFrozen) {
-            builder.field("index_include_frozen", indexIncludeFrozen);
+            builder.field(INDEX_INCLUDE_FROZEN_NAME, indexIncludeFrozen);
         }
         if (binaryCommunication != null) {
-            builder.field("binary_format", binaryCommunication);
+            builder.field(BINARY_FORMAT_NAME, binaryCommunication);
         }
         if (cursor != null) {
-            builder.field("cursor", cursor);
+            builder.field(CURSOR_NAME, cursor);
         }
         return builder;
     }

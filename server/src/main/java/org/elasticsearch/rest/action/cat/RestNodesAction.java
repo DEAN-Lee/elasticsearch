@@ -1,25 +1,13 @@
 /*
- * Licensed to Elasticsearch under one or more contributor
- * license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright
- * ownership. Elasticsearch licenses this file to you under
- * the Apache License, Version 2.0 (the "License"); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0 and the Server Side Public License, v 1; you may not use this file except
+ * in compliance with, at your election, the Elastic License 2.0 or the Server
+ * Side Public License, v 1.
  */
 
 package org.elasticsearch.rest.action.cat;
 
-import org.elasticsearch.Version;
 import org.elasticsearch.action.admin.cluster.node.info.NodeInfo;
 import org.elasticsearch.action.admin.cluster.node.info.NodesInfoRequest;
 import org.elasticsearch.action.admin.cluster.node.info.NodesInfoResponse;
@@ -38,6 +26,7 @@ import org.elasticsearch.common.network.NetworkAddress;
 import org.elasticsearch.common.transport.TransportAddress;
 import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.http.HttpInfo;
+import org.elasticsearch.index.bulk.stats.BulkStats;
 import org.elasticsearch.index.cache.query.QueryCacheStats;
 import org.elasticsearch.index.cache.request.RequestCacheStats;
 import org.elasticsearch.index.engine.SegmentsStats;
@@ -53,6 +42,7 @@ import org.elasticsearch.monitor.fs.FsInfo;
 import org.elasticsearch.monitor.jvm.JvmInfo;
 import org.elasticsearch.monitor.jvm.JvmStats;
 import org.elasticsearch.monitor.os.OsStats;
+import org.elasticsearch.monitor.process.ProcessInfo;
 import org.elasticsearch.monitor.process.ProcessStats;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestResponse;
@@ -88,9 +78,6 @@ public class RestNodesAction extends AbstractCatAction {
     public RestChannelConsumer doCatRequest(final RestRequest request, final NodeClient client) {
         final ClusterStateRequest clusterStateRequest = new ClusterStateRequest();
         clusterStateRequest.clear().nodes(true);
-        if (request.hasParam("local") && Version.CURRENT.major == Version.V_7_0_0.major + 1) { // only needed in v8 to catch breaking usages
-            throw new IllegalArgumentException("parameter [local] is not supported");
-        }
         clusterStateRequest.masterNodeTimeout(request.paramAsTime("master_timeout", clusterStateRequest.masterNodeTimeout()));
         final boolean fullId = request.paramAsBoolean("full_id", false);
         return channel -> client.admin().cluster().state(clusterStateRequest, new RestActionListener<ClusterStateResponse>(channel) {
@@ -173,6 +160,9 @@ public class RestNodesAction extends AbstractCatAction {
 
         table.addCell("query_cache.memory_size", "alias:qcm,queryCacheMemory;default:false;text-align:right;desc:used query cache");
         table.addCell("query_cache.evictions", "alias:qce,queryCacheEvictions;default:false;text-align:right;desc:query cache evictions");
+        table.addCell("query_cache.hit_count", "alias:qchc,queryCacheHitCount;default:false;text-align:right;desc:query cache hit counts");
+        table.addCell("query_cache.miss_count",
+            "alias:qcmc,queryCacheMissCount;default:false;text-align:right;desc:query cache miss counts");
 
         table.addCell("request_cache.memory_size", "alias:rcm,requestCacheMemory;default:false;text-align:right;desc:used request cache");
         table.addCell("request_cache.evictions",
@@ -253,6 +243,15 @@ public class RestNodesAction extends AbstractCatAction {
         table.addCell("suggest.time", "alias:suti,suggestTime;default:false;text-align:right;desc:time spend in suggest");
         table.addCell("suggest.total", "alias:suto,suggestTotal;default:false;text-align:right;desc:number of suggest ops");
 
+        table.addCell("bulk.total_operations",
+            "alias:bto,bulkTotalOperations;default:false;text-align:right;desc:number of bulk shard ops");
+        table.addCell("bulk.total_time", "alias:btti,bulkTotalTime;default:false;text-align:right;desc:time spend in shard bulk");
+        table.addCell("bulk.total_size_in_bytes",
+            "alias:btsi,bulkTotalSizeInBytes;default:false;text-align:right;desc:total size in bytes of shard bulk");
+        table.addCell("bulk.avg_time", "alias:bati,bulkAvgTime;default:false;text-align:right;desc:average time spend in shard bulk");
+        table.addCell("bulk.avg_size_in_bytes",
+            "alias:basi,bulkAvgSizeInBytes;default:false;text-align:right;desc:average size in bytes of shard bulk");
+
         table.endHeaders();
         return table;
     }
@@ -268,7 +267,7 @@ public class RestNodesAction extends AbstractCatAction {
             NodeInfo info = nodesInfo.getNodesMap().get(node.getId());
             NodeStats stats = nodesStats.getNodesMap().get(node.getId());
 
-            JvmInfo jvmInfo = info == null ? null : info.getJvm();
+            JvmInfo jvmInfo = info == null ? null : info.getInfo(JvmInfo.class);
             JvmStats jvmStats = stats == null ? null : stats.getJvm();
             FsInfo fsInfo = stats == null ? null : stats.getFs();
             OsStats osStats = stats == null ? null : stats.getOs();
@@ -278,10 +277,10 @@ public class RestNodesAction extends AbstractCatAction {
             table.startRow();
 
             table.addCell(fullId ? node.getId() : Strings.substring(node.getId(), 0, 4));
-            table.addCell(info == null ? null : info.getProcess().getId());
+            table.addCell(info == null ? null : info.getInfo(ProcessInfo.class).getId());
             table.addCell(node.getHostAddress());
             table.addCell(node.getAddress().address().getPort());
-            final HttpInfo httpInfo = info == null ? null : info.getHttp();
+            final HttpInfo httpInfo = info == null ? null : info.getInfo(HttpInfo.class);
             if (httpInfo != null) {
                 TransportAddress transportAddress = httpInfo.getAddress().publishAddress();
                 table.addCell(NetworkAddress.format(transportAddress.address()));
@@ -354,6 +353,8 @@ public class RestNodesAction extends AbstractCatAction {
             QueryCacheStats fcStats = indicesStats == null ? null : indicesStats.getQueryCache();
             table.addCell(fcStats == null ? null : fcStats.getMemorySize());
             table.addCell(fcStats == null ? null : fcStats.getEvictions());
+            table.addCell(fcStats == null ? null : fcStats.getHitCount());
+            table.addCell(fcStats == null ? null : fcStats.getMissCount());
 
             RequestCacheStats qcStats = indicesStats == null ? null : indicesStats.getRequestCache();
             table.addCell(qcStats == null ? null : qcStats.getMemorySize());
@@ -426,6 +427,13 @@ public class RestNodesAction extends AbstractCatAction {
             table.addCell(searchStats == null ? null : searchStats.getTotal().getSuggestCurrent());
             table.addCell(searchStats == null ? null : searchStats.getTotal().getSuggestTime());
             table.addCell(searchStats == null ? null : searchStats.getTotal().getSuggestCount());
+
+            BulkStats bulkStats = indicesStats == null ? null : indicesStats.getBulk();
+            table.addCell(bulkStats == null ? null : bulkStats.getTotalOperations());
+            table.addCell(bulkStats == null ? null : bulkStats.getTotalTime());
+            table.addCell(bulkStats == null ? null : bulkStats.getTotalSizeInBytes());
+            table.addCell(bulkStats == null ? null : bulkStats.getAvgTime());
+            table.addCell(bulkStats == null ? null : bulkStats.getAvgSizeInBytes());
 
             table.endRow();
         }

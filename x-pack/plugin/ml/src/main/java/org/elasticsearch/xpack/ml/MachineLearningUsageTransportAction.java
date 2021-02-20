@@ -1,7 +1,8 @@
 /*
  * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License;
- * you may not use this file except in compliance with the Elastic License.
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
  */
 package org.elasticsearch.xpack.ml;
 
@@ -17,7 +18,7 @@ import org.elasticsearch.action.support.ActionFilters;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
-import org.elasticsearch.cluster.metadata.MetaData;
+import org.elasticsearch.cluster.metadata.Metadata;
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
@@ -86,7 +87,8 @@ public class MachineLearningUsageTransportAction extends XPackUsageFeatureTransp
     protected void masterOperation(Task task, XPackUsageRequest request, ClusterState state,
                                    ActionListener<XPackUsageFeatureResponse> listener) {
         if (enabled == false) {
-            MachineLearningFeatureSetUsage usage = new MachineLearningFeatureSetUsage(licenseState.isMachineLearningAllowed(), enabled,
+            MachineLearningFeatureSetUsage usage = new MachineLearningFeatureSetUsage(
+                licenseState.isAllowed(XPackLicenseState.Feature.MACHINE_LEARNING), enabled,
                 Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0);
             listener.onResponse(new XPackUsageFeatureResponse(usage));
             return;
@@ -102,7 +104,8 @@ public class MachineLearningUsageTransportAction extends XPackUsageFeatureTransp
         ActionListener<SearchResponse> trainedModelConfigCountListener = ActionListener.wrap(
             response -> {
                 addTrainedModelStats(response, inferenceUsage);
-                MachineLearningFeatureSetUsage usage = new MachineLearningFeatureSetUsage(licenseState.isMachineLearningAllowed(),
+                MachineLearningFeatureSetUsage usage = new MachineLearningFeatureSetUsage(
+                    licenseState.isAllowed(XPackLicenseState.Feature.MACHINE_LEARNING),
                     enabled, jobsUsage, datafeedsUsage, analyticsUsage, inferenceUsage, nodeCount);
                 listener.onResponse(new XPackUsageFeatureResponse(usage));
             },
@@ -151,10 +154,10 @@ public class MachineLearningUsageTransportAction extends XPackUsageFeatureTransp
             listener::onFailure);
 
         // Step 1. Extract usage from jobs stats and then request stats for all datafeeds
-        GetJobsStatsAction.Request jobStatsRequest = new GetJobsStatsAction.Request(MetaData.ALL);
+        GetJobsStatsAction.Request jobStatsRequest = new GetJobsStatsAction.Request(Metadata.ALL);
         ActionListener<GetJobsStatsAction.Response> jobStatsListener = ActionListener.wrap(
             response -> {
-                jobManagerHolder.getJobManager().expandJobs(MetaData.ALL, true, ActionListener.wrap(jobs -> {
+                jobManagerHolder.getJobManager().expandJobs(Metadata.ALL, true, ActionListener.wrap(jobs -> {
                     addJobsUsage(response, jobs.results(), jobsUsage);
                     GetDatafeedsStatsAction.Request datafeedStatsRequest = new GetDatafeedsStatsAction.Request(
                         GetDatafeedsStatsAction.ALL);
@@ -182,9 +185,14 @@ public class MachineLearningUsageTransportAction extends XPackUsageFeatureTransp
         Map<String, Long> allJobsCreatedBy = jobs.stream().map(this::jobCreatedBy)
             .collect(Collectors.groupingBy(item -> item, Collectors.counting()));;
         for (GetJobsStatsAction.Response.JobStats jobStats : jobsStats) {
-            ModelSizeStats modelSizeStats = jobStats.getModelSizeStats();
             Job job = jobMap.get(jobStats.getJobId());
+            if (job == null) {
+                // It's possible we can get job stats without a corresponding job config, if a
+                // persistent task is orphaned. Omit these corrupt jobs from the usage info.
+                continue;
+            }
             int detectorsCount = job.getAnalysisConfig().getDetectors().size();
+            ModelSizeStats modelSizeStats = jobStats.getModelSizeStats();
             double modelSize = modelSizeStats == null ? 0.0
                 : jobStats.getModelSizeStats().getModelBytes();
 

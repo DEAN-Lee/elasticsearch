@@ -1,20 +1,9 @@
 /*
- * Licensed to Elasticsearch under one or more contributor
- * license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright
- * ownership. Elasticsearch licenses this file to you under
- * the Apache License, Version 2.0 (the "License"); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0 and the Server Side Public License, v 1; you may not use this file except
+ * in compliance with, at your election, the Elastic License 2.0 or the Server
+ * Side Public License, v 1.
  */
 
 package org.elasticsearch.transport.nio;
@@ -27,6 +16,7 @@ import org.elasticsearch.Version;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.support.PlainActionFuture;
 import org.elasticsearch.cluster.node.DiscoveryNode;
+import org.elasticsearch.common.breaker.CircuitBreaker;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.bytes.CompositeBytesReference;
 import org.elasticsearch.common.bytes.ReleasableBytesReference;
@@ -54,6 +44,7 @@ import org.elasticsearch.nio.ServerChannelContext;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.ConnectionProfile;
 import org.elasticsearch.transport.InboundPipeline;
+import org.elasticsearch.transport.StatsTracker;
 import org.elasticsearch.transport.TcpChannel;
 import org.elasticsearch.transport.TcpServerChannel;
 import org.elasticsearch.transport.TcpTransport;
@@ -273,8 +264,13 @@ public class MockNioTransport extends TcpTransport {
 
         private MockTcpReadWriteHandler(MockSocketChannel channel, PageCacheRecycler recycler, TcpTransport transport) {
             this.channel = channel;
-            this.pipeline = new InboundPipeline(transport.getVersion(), recycler, transport::inboundMessage,
-                transport::inboundDecodeException);
+            final ThreadPool threadPool = transport.getThreadPool();
+            final Supplier<CircuitBreaker> breaker = transport.getInflightBreaker();
+            final RequestHandlers requestHandlers = transport.getRequestHandlers();
+            final Version version = transport.getVersion();
+            final StatsTracker statsTracker = transport.getStatsTracker();
+            this.pipeline = new InboundPipeline(version, statsTracker, recycler, threadPool::relativeTimeInMillis, breaker,
+                requestHandlers::getHandler, transport::inboundMessage);
         }
 
         @Override
@@ -285,7 +281,7 @@ public class MockNioTransport extends TcpTransport {
                 references[i] = BytesReference.fromByteBuffer(pages[i].byteBuffer());
             }
             Releasable releasable = () -> IOUtils.closeWhileHandlingException(pages);
-            try (ReleasableBytesReference reference = new ReleasableBytesReference(new CompositeBytesReference(references), releasable)) {
+            try (ReleasableBytesReference reference = new ReleasableBytesReference(CompositeBytesReference.of(references), releasable)) {
                 pipeline.handleBytes(channel, reference);
                 return reference.length();
             }

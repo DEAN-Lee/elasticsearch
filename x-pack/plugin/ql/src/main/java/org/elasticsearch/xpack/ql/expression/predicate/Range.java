@@ -1,7 +1,8 @@
 /*
  * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License;
- * you may not use this file except in compliance with the Elastic License.
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
  */
 package org.elasticsearch.xpack.ql.expression.predicate;
 
@@ -22,6 +23,7 @@ import org.elasticsearch.xpack.ql.tree.Source;
 import org.elasticsearch.xpack.ql.type.DataType;
 import org.elasticsearch.xpack.ql.type.DataTypes;
 
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -35,28 +37,27 @@ public class Range extends ScalarFunction {
 
     private final Expression value, lower, upper;
     private final boolean includeLower, includeUpper;
+    private final ZoneId zoneId;
 
-    public Range(Source source, Expression value, Expression lower, boolean includeLower, Expression upper, boolean includeUpper) {
-        super(source, asList(value, lower, upper));
+    public Range(Source src, Expression value, Expression lower, boolean inclLower, Expression upper, boolean inclUpper, ZoneId zoneId) {
+        super(src, asList(value, lower, upper));
 
         this.value = value;
         this.lower = lower;
         this.upper = upper;
-        this.includeLower = includeLower;
-        this.includeUpper = includeUpper;
+        this.includeLower = inclLower;
+        this.includeUpper = inclUpper;
+        this.zoneId = zoneId;
     }
 
     @Override
     protected NodeInfo<Range> info() {
-        return NodeInfo.create(this, Range::new, value, lower, includeLower, upper, includeUpper);
+        return NodeInfo.create(this, Range::new, value, lower, includeLower, upper, includeUpper, zoneId);
     }
 
     @Override
     public Expression replaceChildren(List<Expression> newChildren) {
-        if (newChildren.size() != 3) {
-            throw new IllegalArgumentException("expected [3] children but received [" + newChildren.size() + "]");
-        }
-        return new Range(source(), newChildren.get(0), newChildren.get(1), includeLower, newChildren.get(2), includeUpper);
+        return new Range(source(), newChildren.get(0), newChildren.get(1), includeLower, newChildren.get(2), includeUpper, zoneId);
     }
 
     public Expression value() {
@@ -77,6 +78,10 @@ public class Range extends ScalarFunction {
 
     public boolean includeUpper() {
         return includeUpper;
+    }
+
+    public ZoneId zoneId() {
+        return zoneId;
     }
 
     @Override
@@ -127,7 +132,7 @@ public class Range extends ScalarFunction {
         ScriptTemplate valueScript = asScript(value);
         ScriptTemplate lowerScript = asScript(lower);
         ScriptTemplate upperScript = asScript(upper);
-        
+
 
         String template = formatTemplate(format(Locale.ROOT, "{ql}.and({ql}.%s(%s, %s), {ql}.%s(%s, %s))",
                         includeLower() ? "gte" : "gt",
@@ -160,7 +165,7 @@ public class Range extends ScalarFunction {
 
     @Override
     public int hashCode() {
-        return Objects.hash(includeLower, includeUpper, value, lower, upper);
+        return Objects.hash(includeLower, includeUpper, value, lower, upper, zoneId);
     }
 
     @Override
@@ -178,6 +183,7 @@ public class Range extends ScalarFunction {
                 && Objects.equals(includeUpper, other.includeUpper)
                 && Objects.equals(value, other.value)
                 && Objects.equals(lower, other.lower)
-                && Objects.equals(upper, other.upper);
+                && Objects.equals(upper, other.upper)
+                && Objects.equals(zoneId, other.zoneId);
     }
 }

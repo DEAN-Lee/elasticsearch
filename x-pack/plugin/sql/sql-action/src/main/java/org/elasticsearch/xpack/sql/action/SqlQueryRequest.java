@@ -1,7 +1,8 @@
 /*
  * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License;
- * you may not use this file except in compliance with the Elastic License.
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
  */
 package org.elasticsearch.xpack.sql.action;
 
@@ -25,16 +26,20 @@ import java.util.List;
 import java.util.Objects;
 
 import static org.elasticsearch.action.ValidateActions.addValidationError;
+import static org.elasticsearch.xpack.sql.proto.Protocol.BINARY_FORMAT_NAME;
+import static org.elasticsearch.xpack.sql.proto.Protocol.COLUMNAR_NAME;
+import static org.elasticsearch.xpack.sql.proto.Protocol.FIELD_MULTI_VALUE_LENIENCY_NAME;
+import static org.elasticsearch.xpack.sql.proto.Protocol.INDEX_INCLUDE_FROZEN_NAME;
 
 /**
  * Request to perform an sql query
  */
 public class SqlQueryRequest extends AbstractSqlQueryRequest {
     private static final ObjectParser<SqlQueryRequest, Void> PARSER = objectParser(SqlQueryRequest::new);
-    static final ParseField COLUMNAR = new ParseField("columnar");
-    static final ParseField FIELD_MULTI_VALUE_LENIENCY = new ParseField("field_multi_value_leniency");
-    static final ParseField INDEX_INCLUDE_FROZEN = new ParseField("index_include_frozen");
-    static final ParseField BINARY_COMMUNICATION = new ParseField("binary_format");
+    static final ParseField COLUMNAR = new ParseField(COLUMNAR_NAME);
+    static final ParseField FIELD_MULTI_VALUE_LENIENCY = new ParseField(FIELD_MULTI_VALUE_LENIENCY_NAME);
+    static final ParseField INDEX_INCLUDE_FROZEN = new ParseField(INDEX_INCLUDE_FROZEN_NAME);
+    static final ParseField BINARY_COMMUNICATION = new ParseField(BINARY_FORMAT_NAME);
 
     static {
         PARSER.declareString(SqlQueryRequest::cursor, CURSOR);
@@ -46,7 +51,7 @@ public class SqlQueryRequest extends AbstractSqlQueryRequest {
 
     private String cursor = "";
     /*
-     * Using the Boolean object here so that SqlTranslateRequest to set this to null (since it doesn't need a "columnar" or 
+     * Using the Boolean object here so that SqlTranslateRequest to set this to null (since it doesn't need a "columnar" or
      * binary parameter).
      * See {@code SqlTranslateRequest.toXContent}
      */
@@ -98,7 +103,7 @@ public class SqlQueryRequest extends AbstractSqlQueryRequest {
         this.cursor = cursor;
         return this;
     }
-    
+
     /**
      * Should format the values in a columnar fashion or not (default false).
      * Depending on the format used (csv, tsv, txt, json etc) this setting will be taken into

@@ -1,12 +1,13 @@
 /*
  * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License;
- * you may not use this file except in compliance with the Elastic License.
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
  */
 package org.elasticsearch.xpack.ml.rest.inference;
 
 import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.cluster.metadata.MetaData;
+import org.elasticsearch.cluster.metadata.Metadata;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.rest.BaseRestHandler;
 import org.elasticsearch.rest.RestRequest;
@@ -17,6 +18,7 @@ import org.elasticsearch.xpack.core.ml.inference.TrainedModelConfig;
 import org.elasticsearch.xpack.ml.MachineLearning;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
@@ -26,9 +28,18 @@ public class RestGetTrainedModelsStatsAction extends BaseRestHandler {
 
     @Override
     public List<Route> routes() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public List<ReplacedRoute> replacedRoutes() {
         return List.of(
-            new Route(GET, MachineLearning.BASE_PATH + "inference/{" + TrainedModelConfig.MODEL_ID.getPreferredName() + "}/_stats"),
-            new Route(GET, MachineLearning.BASE_PATH + MachineLearning.BASE_PATH + "inference/_stats"));
+            new ReplacedRoute(
+                GET, MachineLearning.BASE_PATH + "trained_models/{" + TrainedModelConfig.MODEL_ID.getPreferredName() + "}/_stats",
+                GET, MachineLearning.BASE_PATH + "inference/{" + TrainedModelConfig.MODEL_ID.getPreferredName() + "}/_stats"),
+            new ReplacedRoute(
+                GET, MachineLearning.BASE_PATH + "trained_models/_stats",
+                GET, MachineLearning.BASE_PATH + "inference/_stats"));
     }
 
     @Override
@@ -40,7 +51,7 @@ public class RestGetTrainedModelsStatsAction extends BaseRestHandler {
     protected RestChannelConsumer prepareRequest(RestRequest restRequest, NodeClient client) throws IOException {
         String modelId = restRequest.param(TrainedModelConfig.MODEL_ID.getPreferredName());
         if (Strings.isNullOrEmpty(modelId)) {
-            modelId = MetaData.ALL;
+            modelId = Metadata.ALL;
         }
         GetTrainedModelsStatsAction.Request request = new GetTrainedModelsStatsAction.Request(modelId);
         if (restRequest.hasParam(PageParams.FROM.getPreferredName()) || restRequest.hasParam(PageParams.SIZE.getPreferredName())) {

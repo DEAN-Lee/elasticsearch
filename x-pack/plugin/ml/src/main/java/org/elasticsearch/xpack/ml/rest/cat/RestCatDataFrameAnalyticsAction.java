@@ -1,12 +1,13 @@
 /*
  * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License;
- * you may not use this file except in compliance with the Elastic License.
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
  */
 package org.elasticsearch.xpack.ml.rest.cat;
 
 import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.cluster.metadata.MetaData;
+import org.elasticsearch.cluster.metadata.Metadata;
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.Table;
@@ -51,7 +52,7 @@ public class RestCatDataFrameAnalyticsAction extends AbstractCatAction {
     protected RestChannelConsumer doCatRequest(RestRequest restRequest, NodeClient client) {
         String dataFrameAnalyticsId = restRequest.param(DataFrameAnalyticsConfig.ID.getPreferredName());
         if (Strings.isNullOrEmpty(dataFrameAnalyticsId)) {
-            dataFrameAnalyticsId = MetaData.ALL;
+            dataFrameAnalyticsId = Metadata.ALL;
         }
 
         GetDataFrameAnalyticsAction.Request getRequest = new GetDataFrameAnalyticsAction.Request(dataFrameAnalyticsId);

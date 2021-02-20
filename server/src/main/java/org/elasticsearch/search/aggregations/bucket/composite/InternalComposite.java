@@ -1,20 +1,9 @@
 /*
- * Licensed to Elasticsearch under one or more contributor
- * license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright
- * ownership. Elasticsearch licenses this file to you under
- * the Apache License, Version 2.0 (the "License"); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0 and the Server Side Public License, v 1; you may not use this file except
+ * in compliance with, at your election, the Elastic License 2.0 or the Server
+ * Side Public License, v 1.
  */
 
 package org.elasticsearch.search.aggregations.bucket.composite;
@@ -30,7 +19,6 @@ import org.elasticsearch.search.aggregations.InternalAggregation;
 import org.elasticsearch.search.aggregations.InternalAggregations;
 import org.elasticsearch.search.aggregations.InternalMultiBucketAggregation;
 import org.elasticsearch.search.aggregations.KeyComparable;
-import org.elasticsearch.search.aggregations.pipeline.PipelineAggregator;
 
 import java.io.IOException;
 import java.util.AbstractMap;
@@ -58,8 +46,8 @@ public class InternalComposite
 
     InternalComposite(String name, int size, List<String> sourceNames, List<DocValueFormat> formats,
                       List<InternalBucket> buckets, CompositeKey afterKey, int[] reverseMuls, boolean earlyTerminated,
-                      List<PipelineAggregator> pipelineAggregators, Map<String, Object> metaData) {
-        super(name, pipelineAggregators, metaData);
+                      Map<String, Object> metadata) {
+        super(name, metadata);
         this.sourceNames = sourceNames;
         this.formats = formats;
         this.buckets = buckets;
@@ -116,7 +104,7 @@ public class InternalComposite
          * to be able to retrieve the next page even if all buckets have been filtered.
          */
         return new InternalComposite(name, size, sourceNames, formats, newBuckets, afterKey,
-            reverseMuls, earlyTerminated, pipelineAggregators(), getMetaData());
+            reverseMuls, earlyTerminated, getMetadata());
     }
 
     @Override
@@ -179,7 +167,6 @@ public class InternalComposite
             if (lastBucket != null && bucketIt.current.compareKey(lastBucket) != 0) {
                 InternalBucket reduceBucket = reduceBucket(buckets, reduceContext);
                 buckets.clear();
-                reduceContext.consumeBucketsAndMaybeBreak(1);
                 result.add(reduceBucket);
                 if (result.size() >= size) {
                     break;
@@ -193,7 +180,6 @@ public class InternalComposite
         }
         if (buckets.size() > 0) {
             InternalBucket reduceBucket = reduceBucket(buckets, reduceContext);
-            reduceContext.consumeBucketsAndMaybeBreak(1);
             result.add(reduceBucket);
         }
 
@@ -206,8 +192,9 @@ public class InternalComposite
             reducedFormats = lastBucket.formats;
             lastKey = lastBucket.getRawKey();
         }
+        reduceContext.consumeBucketsAndMaybeBreak(result.size());
         return new InternalComposite(name, size, sourceNames, reducedFormats, result, lastKey, reverseMuls,
-            earlyTerminated, pipelineAggregators(), metaData);
+            earlyTerminated, metadata);
     }
 
     @Override
@@ -288,7 +275,7 @@ public class InternalComposite
         InternalBucket(StreamInput in, List<String> sourceNames, List<DocValueFormat> formats, int[] reverseMuls) throws IOException {
             this.key = new CompositeKey(in);
             this.docCount = in.readVLong();
-            this.aggregations = new InternalAggregations(in);
+            this.aggregations = InternalAggregations.readFrom(in);
             this.reverseMuls = reverseMuls;
             this.sourceNames = sourceNames;
             this.formats = formats;

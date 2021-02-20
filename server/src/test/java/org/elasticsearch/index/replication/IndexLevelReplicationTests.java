@@ -1,20 +1,9 @@
 /*
- * Licensed to Elasticsearch under one or more contributor
- * license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright
- * ownership. Elasticsearch licenses this file to you under
- * the Apache License, Version 2.0 (the "License"); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0 and the Server Side Public License, v 1; you may not use this file except
+ * in compliance with, at your election, the Elastic License 2.0 or the Server
+ * Side Public License, v 1.
  */
 package org.elasticsearch.index.replication;
 
@@ -30,7 +19,7 @@ import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkShardRequest;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.cluster.metadata.IndexMetaData;
+import org.elasticsearch.cluster.metadata.IndexMetadata;
 import org.elasticsearch.cluster.routing.ShardRouting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
@@ -130,8 +119,8 @@ public class IndexLevelReplicationTests extends ESIndexLevelReplicationTestCase 
                 (indexShard, node) -> new RecoveryTarget(indexShard, node, recoveryListener) {
                     @Override
                     public void cleanFiles(int totalTranslogOps, long globalCheckpoint,
-                                           Store.MetadataSnapshot sourceMetaData, ActionListener<Void> listener) {
-                        super.cleanFiles(totalTranslogOps, globalCheckpoint, sourceMetaData, ActionListener.runAfter(listener, () -> {
+                                           Store.MetadataSnapshot sourceMetadata, ActionListener<Void> listener) {
+                        super.cleanFiles(totalTranslogOps, globalCheckpoint, sourceMetadata, ActionListener.runAfter(listener, () -> {
                             latch.countDown();
                             try {
                                 latch.await();
@@ -170,7 +159,7 @@ public class IndexLevelReplicationTests extends ESIndexLevelReplicationTestCase 
     public void testAppendOnlyRecoveryThenReplication() throws Exception {
         CountDownLatch indexedOnPrimary = new CountDownLatch(1);
         CountDownLatch recoveryDone = new CountDownLatch(1);
-        try (ReplicationGroup shards = new ReplicationGroup(buildIndexMetaData(1)) {
+        try (ReplicationGroup shards = new ReplicationGroup(buildIndexMetadata(1)) {
             @Override
             protected EngineFactory getEngineFactory(ShardRouting routing) {
                 return config -> new InternalEngine(config) {
@@ -295,7 +284,7 @@ public class IndexLevelReplicationTests extends ESIndexLevelReplicationTestCase 
 
     public void testConflictingOpsOnReplica() throws Exception {
         String mappings = "{ \"_doc\": { \"properties\": { \"f\": { \"type\": \"keyword\"} }}}";
-        try (ReplicationGroup shards = new ReplicationGroup(buildIndexMetaData(2, mappings))) {
+        try (ReplicationGroup shards = new ReplicationGroup(buildIndexMetadata(2, mappings))) {
             shards.startAll();
             List<IndexShard> replicas = shards.getReplicas();
             IndexShard replica1 = replicas.get(0);
@@ -322,7 +311,7 @@ public class IndexLevelReplicationTests extends ESIndexLevelReplicationTestCase 
 
     public void testReplicaTermIncrementWithConcurrentPrimaryPromotion() throws Exception {
         String mappings = "{ \"_doc\": { \"properties\": { \"f\": { \"type\": \"keyword\"} }}}";
-        try (ReplicationGroup shards = new ReplicationGroup(buildIndexMetaData(2, mappings))) {
+        try (ReplicationGroup shards = new ReplicationGroup(buildIndexMetadata(2, mappings))) {
             shards.startAll();
             long primaryPrimaryTerm = shards.getPrimary().getPendingPrimaryTerm();
             List<IndexShard> replicas = shards.getReplicas();
@@ -369,7 +358,7 @@ public class IndexLevelReplicationTests extends ESIndexLevelReplicationTestCase 
 
     public void testReplicaOperationWithConcurrentPrimaryPromotion() throws Exception {
         String mappings = "{ \"_doc\": { \"properties\": { \"f\": { \"type\": \"keyword\"} }}}";
-        try (ReplicationGroup shards = new ReplicationGroup(buildIndexMetaData(1, mappings))) {
+        try (ReplicationGroup shards = new ReplicationGroup(buildIndexMetadata(1, mappings))) {
             shards.startAll();
             long primaryPrimaryTerm = shards.getPrimary().getPendingPrimaryTerm();
             IndexRequest indexRequest = new IndexRequest(index.getName()).id("1").source("{ \"f\": \"1\"}", XContentType.JSON);
@@ -439,7 +428,7 @@ public class IndexLevelReplicationTests extends ESIndexLevelReplicationTestCase 
                     }
                 }
             }, null, null, config);
-        try (ReplicationGroup shards = new ReplicationGroup(buildIndexMetaData(0)) {
+        try (ReplicationGroup shards = new ReplicationGroup(buildIndexMetadata(0)) {
             @Override
             protected EngineFactory getEngineFactory(ShardRouting routing) { return engineFactory; }}) {
 
@@ -629,12 +618,12 @@ public class IndexLevelReplicationTests extends ESIndexLevelReplicationTestCase 
     }
 
     private void updateGCDeleteCycle(IndexShard shard, TimeValue interval) {
-        IndexMetaData.Builder builder = IndexMetaData.builder(shard.indexSettings().getIndexMetaData());
+        IndexMetadata.Builder builder = IndexMetadata.builder(shard.indexSettings().getIndexMetadata());
         builder.settings(Settings.builder()
             .put(shard.indexSettings().getSettings())
             .put(IndexSettings.INDEX_GC_DELETES_SETTING.getKey(), interval.getStringRep())
         );
-        shard.indexSettings().updateIndexMetaData(builder.build());
+        shard.indexSettings().updateIndexMetadata(builder.build());
         shard.onSettingsChanged();
     }
 

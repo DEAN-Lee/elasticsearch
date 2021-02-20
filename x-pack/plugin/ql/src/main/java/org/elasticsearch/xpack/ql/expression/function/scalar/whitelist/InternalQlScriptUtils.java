@@ -1,15 +1,18 @@
 /*
  * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License;
- * you may not use this file except in compliance with the Elastic License.
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
  */
 
 package org.elasticsearch.xpack.ql.expression.function.scalar.whitelist;
 
 import org.elasticsearch.index.fielddata.ScriptDocValues;
+import org.elasticsearch.xpack.ql.expression.function.scalar.string.StartsWithFunctionProcessor;
 import org.elasticsearch.xpack.ql.expression.predicate.logical.BinaryLogicProcessor.BinaryLogicOperation;
 import org.elasticsearch.xpack.ql.expression.predicate.logical.NotProcessor;
 import org.elasticsearch.xpack.ql.expression.predicate.nulls.CheckNullProcessor.CheckNullOperation;
+import org.elasticsearch.xpack.ql.expression.predicate.operator.arithmetic.DefaultBinaryArithmeticOperation;
 import org.elasticsearch.xpack.ql.expression.predicate.operator.arithmetic.UnaryArithmeticProcessor.UnaryArithmeticOperation;
 import org.elasticsearch.xpack.ql.expression.predicate.operator.comparison.BinaryComparisonProcessor.BinaryComparisonOperation;
 import org.elasticsearch.xpack.ql.expression.predicate.operator.comparison.InProcessor;
@@ -29,7 +32,7 @@ public class InternalQlScriptUtils {
     public static <T> Object docValue(Map<String, ScriptDocValues<T>> doc, String fieldName) {
         if (doc.containsKey(fieldName)) {
             ScriptDocValues<T> docValues = doc.get(fieldName);
-            if (!docValues.isEmpty()) {
+            if (docValues.isEmpty() == false) {
                 return docValues.get(0);
             }
         }
@@ -112,14 +115,45 @@ public class InternalQlScriptUtils {
     // Regex
     //
     public static Boolean regex(String value, String pattern) {
+        return regex(value, pattern, Boolean.FALSE);
+    }
+
+    public static Boolean regex(String value, String pattern, Boolean caseInsensitive) {
         // TODO: this needs to be improved to avoid creating the pattern on every call
-        return RegexOperation.match(value, pattern);
+        return RegexOperation.match(value, pattern, caseInsensitive);
     }
 
     //
     // Math
     //
+    public static Number add(Number left, Number right) {
+        return (Number) DefaultBinaryArithmeticOperation.ADD.apply(left, right);
+    }
+
+    public static Number div(Number left, Number right) {
+        return (Number) DefaultBinaryArithmeticOperation.DIV.apply(left, right);
+    }
+
+    public static Number mod(Number left, Number right) {
+        return (Number) DefaultBinaryArithmeticOperation.MOD.apply(left, right);
+    }
+
+    public static Number mul(Number left, Number right) {
+        return (Number) DefaultBinaryArithmeticOperation.MUL.apply(left, right);
+    }
+
     public static Number neg(Number value) {
         return UnaryArithmeticOperation.NEGATE.apply(value);
+    }
+
+    public static Number sub(Number left, Number right) {
+        return (Number) DefaultBinaryArithmeticOperation.SUB.apply(left, right);
+    }
+
+    //
+    // String
+    //
+    public static Boolean startsWith(String s, String pattern, Boolean caseInsensitive) {
+        return (Boolean) StartsWithFunctionProcessor.doProcess(s, pattern, caseInsensitive);
     }
 }

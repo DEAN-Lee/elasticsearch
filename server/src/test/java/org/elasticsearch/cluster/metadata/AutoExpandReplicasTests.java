@@ -1,20 +1,9 @@
 /*
- * Licensed to Elasticsearch under one or more contributor
- * license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright
- * ownership. Elasticsearch licenses this file to you under
- * the Apache License, Version 2.0 (the "License"); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0 and the Server Side Public License, v 1; you may not use this file except
+ * in compliance with, at your election, the Elastic License 2.0 or the Server
+ * Side Public License, v 1.
  */
 package org.elasticsearch.cluster.metadata;
 
@@ -46,11 +35,12 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import static org.elasticsearch.cluster.metadata.IndexMetaData.SETTING_AUTO_EXPAND_REPLICAS;
-import static org.elasticsearch.cluster.metadata.IndexMetaData.SETTING_NUMBER_OF_SHARDS;
+import static org.elasticsearch.cluster.metadata.IndexMetadata.SETTING_AUTO_EXPAND_REPLICAS;
+import static org.elasticsearch.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_SHARDS;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.everyItem;
-import static org.hamcrest.Matchers.isIn;
+import static org.hamcrest.Matchers.in;
+import static org.hamcrest.Matchers.is;
 
 public class AutoExpandReplicasTests extends ESTestCase {
 
@@ -146,7 +136,7 @@ public class AutoExpandReplicasTests extends ESTestCase {
                     .put(SETTING_AUTO_EXPAND_REPLICAS, "0-all").build())
                 .waitForActiveShards(ActiveShardCount.NONE);
             state = cluster.createIndex(state, request);
-            assertTrue(state.metaData().hasIndex("index"));
+            assertTrue(state.metadata().hasIndex("index"));
             while (state.routingTable().index("index").shard(0).allShardsStarted() == false) {
                 logger.info(state);
                 state = cluster.applyStartedShards(state,
@@ -168,7 +158,7 @@ public class AutoExpandReplicasTests extends ESTestCase {
                 postTable = state.routingTable().index("index").shard(0);
 
                 assertTrue("not all shards started in " + state.toString(), postTable.allShardsStarted());
-                assertThat(postTable.toString(), postTable.getAllAllocationIds(), everyItem(isIn(preTable.getAllAllocationIds())));
+                assertThat(postTable.toString(), postTable.getAllAllocationIds(), everyItem(is(in(preTable.getAllAllocationIds()))));
             } else {
                 // fake an election where conflicting nodes are removed and readded
                 state = ClusterState.builder(state).nodes(DiscoveryNodes.builder(state.nodes()).masterNodeId(null).build()).build();
@@ -193,7 +183,7 @@ public class AutoExpandReplicasTests extends ESTestCase {
             Set<String> unchangedAllocationIds = preTable.getShards().stream().filter(shr -> unchangedNodeIds.contains(shr.currentNodeId()))
                 .map(shr -> shr.allocationId().getId()).collect(Collectors.toSet());
 
-            assertThat(postTable.toString(), unchangedAllocationIds, everyItem(isIn(postTable.getAllAllocationIds())));
+            assertThat(postTable.toString(), unchangedAllocationIds, everyItem(is(in(postTable.getAllAllocationIds()))));
 
             postTable.getShards().forEach(
                 shardRouting -> {
@@ -224,7 +214,7 @@ public class AutoExpandReplicasTests extends ESTestCase {
                     .put(SETTING_AUTO_EXPAND_REPLICAS, "0-all").build())
                 .waitForActiveShards(ActiveShardCount.NONE);
             state = cluster.createIndex(state, request);
-            assertTrue(state.metaData().hasIndex("index"));
+            assertTrue(state.metadata().hasIndex("index"));
             while (state.routingTable().index("index").shard(0).allShardsStarted() == false) {
                 logger.info(state);
                 state = cluster.applyStartedShards(state,
@@ -239,7 +229,7 @@ public class AutoExpandReplicasTests extends ESTestCase {
 
             // use allocation filtering
             state = cluster.updateSettings(state, new UpdateSettingsRequest("index").settings(Settings.builder()
-                .put(IndexMetaData.INDEX_ROUTING_EXCLUDE_GROUP_PREFIX + "._name", oldNode.getName()).build()));
+                .put(IndexMetadata.INDEX_ROUTING_EXCLUDE_GROUP_PREFIX + "._name", oldNode.getName()).build()));
 
             while (state.routingTable().index("index").shard(0).allShardsStarted() == false) {
                 logger.info(state);

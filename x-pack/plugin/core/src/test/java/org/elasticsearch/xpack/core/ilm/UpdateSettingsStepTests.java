@@ -1,7 +1,8 @@
 /*
  * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License;
- * you may not use this file except in compliance with the Elastic License.
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
  */
 package org.elasticsearch.xpack.core.ilm;
 
@@ -11,7 +12,7 @@ import org.elasticsearch.Version;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
-import org.elasticsearch.cluster.metadata.IndexMetaData;
+import org.elasticsearch.cluster.metadata.IndexMetadata;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.xpack.core.ilm.AsyncActionStep.Listener;
 import org.elasticsearch.xpack.core.ilm.Step.StepKey;
@@ -59,13 +60,13 @@ public class UpdateSettingsStepTests extends AbstractStepMasterTimeoutTestCase<U
     }
 
     @Override
-    protected IndexMetaData getIndexMetaData() {
-        return IndexMetaData.builder(randomAlphaOfLength(10)).settings(settings(Version.CURRENT))
+    protected IndexMetadata getIndexMetadata() {
+        return IndexMetadata.builder(randomAlphaOfLength(10)).settings(settings(Version.CURRENT))
             .numberOfShards(randomIntBetween(1, 5)).numberOfReplicas(randomIntBetween(0, 5)).build();
     }
 
     public void testPerformAction() {
-        IndexMetaData indexMetaData = getIndexMetaData();
+        IndexMetadata indexMetadata = getIndexMetadata();
 
         UpdateSettingsStep step = createRandomInstance();
 
@@ -74,14 +75,14 @@ public class UpdateSettingsStepTests extends AbstractStepMasterTimeoutTestCase<U
             @SuppressWarnings("unchecked")
             ActionListener<AcknowledgedResponse> listener = (ActionListener<AcknowledgedResponse>) invocation.getArguments()[1];
             assertThat(request.settings(), equalTo(step.getSettings()));
-            assertThat(request.indices(), equalTo(new String[] {indexMetaData.getIndex().getName()}));
-            listener.onResponse(new AcknowledgedResponse(true));
+            assertThat(request.indices(), equalTo(new String[] {indexMetadata.getIndex().getName()}));
+            listener.onResponse(AcknowledgedResponse.TRUE);
             return null;
         }).when(indicesClient).updateSettings(Mockito.any(), Mockito.any());
 
         SetOnce<Boolean> actionCompleted = new SetOnce<>();
 
-        step.performAction(indexMetaData, emptyClusterState(), null, new Listener() {
+        step.performAction(indexMetadata, emptyClusterState(), null, new Listener() {
 
             @Override
             public void onResponse(boolean complete) {
@@ -102,7 +103,7 @@ public class UpdateSettingsStepTests extends AbstractStepMasterTimeoutTestCase<U
     }
 
     public void testPerformActionFailure() {
-        IndexMetaData indexMetaData = getIndexMetaData();
+        IndexMetadata indexMetadata = getIndexMetadata();
         Exception exception = new RuntimeException();
         UpdateSettingsStep step = createRandomInstance();
 
@@ -111,13 +112,13 @@ public class UpdateSettingsStepTests extends AbstractStepMasterTimeoutTestCase<U
             @SuppressWarnings("unchecked")
             ActionListener<AcknowledgedResponse> listener = (ActionListener<AcknowledgedResponse>) invocation.getArguments()[1];
             assertThat(request.settings(), equalTo(step.getSettings()));
-            assertThat(request.indices(), equalTo(new String[] {indexMetaData.getIndex().getName()}));
+            assertThat(request.indices(), equalTo(new String[] {indexMetadata.getIndex().getName()}));
             listener.onFailure(exception);
             return null;
         }).when(indicesClient).updateSettings(Mockito.any(), Mockito.any());
 
         SetOnce<Boolean> exceptionThrown = new SetOnce<>();
-        step.performAction(indexMetaData, emptyClusterState(), null, new Listener() {
+        step.performAction(indexMetadata, emptyClusterState(), null, new Listener() {
 
             @Override
             public void onResponse(boolean complete) {
